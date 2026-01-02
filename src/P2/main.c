@@ -39,65 +39,67 @@ void Startup(); // Forward declaration
  *
  * Invoked by the startup routine, starts the main game loop.
  *
- * @todo 80.99% matched
- * https://decomp.me/scratch/4XwiN
+ * @todo 79.74% matched
+ * https://decomp.me/scratch/Np5sH
  */
 INCLUDE_ASM("asm/nonmatchings/P2/main", main);
 #ifdef SKIP_ASM
-int main(char **argv, int argc) {
-    g_apchzArgs = argv;
+typedef void (*UpdateCallback)(float);
+int main(char** argv, int argc) {
+    // the argument assignment is swapped in assembly
+    g_aphzArgs = argv;
     g_chpzArgs = argc;
 
-    // These appear to be loaded into registers in the target assembly
     Startup();
     CMpeg* mpeg = &g_mpeg;
+    WIPE* wipe = (WIPE*)(&g_pwipe);
 
-    while (true)
-    {
-        if (g_mpeg.oid_1 && g_pwipe->wipes != WIPES_WipingOut)
-        {
+    for(;;) {
+        if (g_mpeg.oid_1 && wipe->wipes != WIPES_WipingOut) {
             FlushFrames(1);
             mpeg->ExecuteOids();
         }
 
-        if (g_transition.m_fPending)
-        {
+        if (g_transition.m_fPending) {
             FlushFrames(1);
             g_transition.Execute();
         }
-
-        if (g_mpeg.oid_1 && g_pwipe->wipes != WIPES_WipingOut)
-        {
+        
+        if (g_mpeg.oid_1 && wipe->wipes != WIPES_WipingOut) {
             FlushFrames(1);
             mpeg->ExecuteOids();
         }
 
         UpdateJoy(&g_joy);
-        UpdateCodes();
+        
         UpdateSave(&g_save);
         UpdateUi(&g_ui);
         UpdateGameState(g_clock.dt);
 
-        if (g_psw)
-        {
+        if (g_psw != nullptr) {
             SetupCm(g_pcm);
             OpenFrame();
 
             MarkClockTick(&g_clock);
+            void* base;
+            void* cb;
+            base = *(void**)g_psw;
+            cb = 0;
 
-            if (g_psw->pcbUpdate)
-            {
-                g_psw->pcbUpdate(g_clock.dt);
+            if (base != 0) {
+                cb = *(void**)((char*)base + 0x54);
             }
-
+            
+            if (cb != 0) {
+                ((void (*)(float))cb)(g_clock.dt);
+            }
             RenderSw(g_psw, g_pcm);
             RenderUi();
             DrawSw(g_psw, g_pcm);
             DrawUi();
             CloseFrame();
         }
-
-        g_cframe += 1;
+        g_cframe++;
     }
 }
 #endif
